@@ -117,7 +117,7 @@ func NewKafkaConsumer(groupID string) (*KafkaConsumer, error) {
     Brokers:    []string{"kafka-1ef455df-hayagriva899-adf2.g.aivencloud.com:25695"},
     Topic:     "MESSAGES",
   
-    StartOffset: kafka.FirstOffset, // 🔥 THIS IS THE FIX
+    StartOffset: kafka.FirstOffset, //  THIS IS THE FIX
     Dialer:    dialer,
 })
 
