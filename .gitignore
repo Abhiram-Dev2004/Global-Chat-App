@@ -2,6 +2,7 @@
 # Node / Next.js
 # ------------------------------------------------------
 # Dependencies
+#updated
 node_modules/
 .pnp/
 .pnp.js
