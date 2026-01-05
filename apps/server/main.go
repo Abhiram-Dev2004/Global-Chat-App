@@ -3,7 +3,7 @@ import "github.com/redis/go-redis/v9"
 import (
 	"context"
 	"errors"
-	"io"
+	"strings"
 	"log"
 	"net"
 	"net/http"
@@ -19,6 +19,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"encoding/json"
 	"github.com/golang-jwt/jwt/v5"
+	"server/models"
+
 )
 type chatServer struct {
 	subscriberMessageBuffer int
@@ -33,6 +35,8 @@ type chatServer struct {
 	db 		 *ent.Client
 	producer *KafkaProducer
 }
+
+
 func (cs *chatServer) listenRedis() {
     ch := cs.redisSub.Channel()
     for msg := range ch {
@@ -122,9 +126,9 @@ func (cs *chatServer) consumeToRedis() {
         log.Printf("Kafka → Redis: %s", msg)
         return cs.redisClient.Publish(ctx, "my-channel", msg).Err()
     })
-    if err != nil {
-        log.Printf("consumer error: %v", err)
-    }
+    // if err != nil { // never reaches here because, if above "return" gave an error, then from kafka.go
+    //     log.Printf("consumer error: %v", err)  // log.Println("handler error:", err)
+    // }										// this will be executed
 }
 
 func (cs *chatServer) consumeToDB() {
@@ -135,10 +139,17 @@ func (cs *chatServer) consumeToDB() {
     defer consumer.reader.Close()
     ctx := context.Background()
     err = consumer.Consume(ctx, func(msg string) error {
-        log.Printf("Kafka → DB: %s", msg)
+		var m models.ChatMessage
+		if err := json.Unmarshal([]byte(msg),&m); err!= nil{
+			log.Printf("invalid message format: %v",err)
+			return nil
+		}
+        log.Printf("Kafka → DB: %+v", m)
         _, dbErr := cs.db.Message.
             Create().
-            SetText(msg).
+            SetText(m.Text).
+			SetUsername(m.Username).
+			SetCreatedAt(m.CreatedAt).
             Save(ctx)
         if dbErr != nil {
             log.Printf("failed saving message: %v", dbErr)
@@ -149,25 +160,91 @@ func (cs *chatServer) consumeToDB() {
         log.Printf("consumer error: %v", err)
     }
 }
+
+
+func (cs *chatServer)extractUsernameFromJWT(r *http.Request) (string, error) {
+    auth := r.Header.Get("Authorization")
+    if auth == "" {
+        return "", errors.New("missing authorization header")
+    }
+
+    tokenStr := strings.TrimPrefix(auth, "Bearer ")
+
+    token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+        return jwtSecret, nil
+    })
+    if err != nil || !token.Valid {
+        return "", errors.New("invalid token")
+    }
+
+    claims, ok := token.Claims.(jwt.MapClaims)
+    if !ok {
+        return "", errors.New("invalid claims")
+    }
+
+    email, ok := claims["email"].(string)
+    if !ok {
+        return "", errors.New("email missing in token")
+    }
+
+    user, err := cs.db.UsersList.
+        Query().
+        Where(userslist.EmailEQ(email)).
+        Only(context.Background())
+    if err != nil {
+        return "", err
+    }
+
+    return user.Username, nil
+}
+
 func (cs *chatServer) publishHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("🟡 /publish HIT")
+	log.Println("HEADERS RECEIVED:", r.Header)
 	if r.Method != "POST" {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
-	body := http.MaxBytesReader(w, r.Body, 8192)
-	msg, err := io.ReadAll(body)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusRequestEntityTooLarge), http.StatusRequestEntityTooLarge)
+	var req struct{
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err!=nil{
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	cs.logf("received messages: %s", string(msg))
-	err = cs.producer.ProduceMessage(string(msg))
-	if err != nil {
-		http.Error(w, "Failed to produce message to Kafka", http.StatusInternalServerError)
+	if req.Text ==""{
+		http.Error(w, "message cannot be empty", http.StatusBadRequest)
 		return
 	}
-		w.WriteHeader(http.StatusAccepted)
+	username, err := cs.extractUsernameFromJWT(r)
+	if err!= nil {
+		http.Error (w, "unauthorized", http.StatusUnauthorized)
+		return
 	}
+	log.Println("🟢 JWT OK, username =", username)
+
+	msg := models.ChatMessage{
+		Username: username,
+		Text: req.Text,
+		CreatedAt: time.Now(),
+	}
+	data,err := json.Marshal(msg)
+	if err!=nil{
+		http.Error(w, "failed to serialize the message", http.StatusInternalServerError)
+		return
+	}
+	if err := cs.producer.ProduceMessage(string(data)); err!=nil{
+		http.Error(w, "failed to produce to kafka", http.StatusInternalServerError)
+		return
+	}
+	log.Println("✅ PRODUCED TO KAFKA")
+
+	w.WriteHeader(http.StatusAccepted)
+
+}
+
+
+
 func (cs *chatServer) subscribe(w http.ResponseWriter, r *http.Request) error {
 	var mu sync.Mutex
 	var c *websocket.Conn
@@ -211,11 +288,20 @@ func (cs *chatServer) subscribe(w http.ResponseWriter, r *http.Request) error {
         cs.logf("failed to fetch messages: %v", err)
     } else {
         for _, msg := range messages {
-            err := writeTimeout(ctx, time.Second*5, c, []byte(msg.Text))
-            if err != nil {
-                return err
-            }
-        }
+	cm := models.ChatMessage{
+		ID:        msg.ID,
+		Username:  msg.Username,
+		Text:      msg.Text,
+		CreatedAt: msg.CreatedAt,
+	}
+
+	data, _ := json.Marshal(cm)
+
+	if err := writeTimeout(ctx, time.Second*5, c, data); err != nil {
+		return err
+	}
+}
+
     }
 	for {
 		select {

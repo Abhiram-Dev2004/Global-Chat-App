@@ -3,17 +3,19 @@
 import { useState, useRef, useEffect } from "react"
 import { useWebSocket } from "../context/SocketProvider"
 import styles from './page.module.css'
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
+// import type { ChatMessage } from "../context/SocketProvider"
+
 export default function Page() {
   const { messages, sendMessage, isConnected } = useWebSocket()
   const [message, setMessage] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null);
-    const router = useRouter(); 
+  const router = useRouter();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
-    useEffect(() => {
+  useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/login"); // redirect to login if not authenticated
@@ -23,15 +25,19 @@ export default function Page() {
     scrollToBottom()
   }, [messages])
 
-  const handleSubmit = (e : React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (message.trim() && isConnected) {
       sendMessage(message)
       setMessage("")
     }
   }
+  const handleLogout = () => {
+  localStorage.removeItem("token");
+  router.push("/login")
+};
 
-  const handleKeyPress = (e:React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>)
@@ -42,14 +48,26 @@ export default function Page() {
     <div className={styles.container}>
       {/* Header */}
       <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <h1 className={styles.title}>Global Chat</h1>
-          <div className={styles.connectionStatus}>
-            <div className={`${styles.statusDot} ${isConnected ? styles.connected : styles.disconnected}`} />
-            <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
-          </div>
-        </div>
-      </header>
+  <div className={styles.headerContent}>
+    <h1 className={styles.title}>Global Chat</h1>
+
+    <div className={styles.headerRight}>
+      <div className={styles.connectionStatus}>
+        <div
+          className={`${styles.statusDot} ${
+            isConnected ? styles.connected : styles.disconnected
+          }`}
+        />
+        <span>{isConnected ? "Connected" : "Disconnected"}</span>
+      </div>
+
+      <button onClick={handleLogout} className={styles.logoutButton}>
+        Logout
+      </button>
+    </div>
+  </div>
+</header>
+
 
       {/* Messages Container */}
       <main className={styles.main}>
@@ -63,11 +81,23 @@ export default function Page() {
           ) : (
             <div className={styles.messagesList}>
               {messages.map((msg, index) => (
-                <div key={index} className={styles.messageBubble}>
-                  <div className={styles.messageContent}>{msg}</div>
-                  
+                <div key={msg.id ?? index} className={styles.messageBubble}>
+                  <div className={styles.messageMeta}>
+                    <span className={styles.username}>{msg.username}</span>
+                    <span className={styles.timestamp}>
+                      {new Date(msg.created_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+
+                  <div className={styles.messageContent}>
+                    {msg.text}
+                  </div>
                 </div>
               ))}
+
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -90,13 +120,13 @@ export default function Page() {
             />
             <div className={styles.inputActions}>
               <span className={styles.charCount}>{message.length}/500</span>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className={styles.sendButton}
                 disabled={!message.trim() || !isConnected}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/>
+                  <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor" />
                 </svg>
               </button>
             </div>

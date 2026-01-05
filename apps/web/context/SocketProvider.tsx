@@ -7,8 +7,14 @@ interface WebSocketProviderProps {
 
 interface IWebSocketContext {
   sendMessage: (msg: string) => void;
-  messages: string[];
+  messages: ChatMessage[];
   isConnected: boolean;
+}
+type ChatMessage = {
+  id?: string
+  username: string
+  text: string
+  created_at: string
 }
 
 const WebSocketContext = React.createContext<IWebSocketContext | null>(null);
@@ -20,17 +26,16 @@ export const useWebSocket = () => {
 };
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
-  const [messages, setMessages] = useState<string[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+
   const [isConnected, setIsConnected] = useState(false);
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
-  const onMessageReceived = useCallback((msg: string) => {
-    console.log("Message received from server:", msg);
-  }, []);
+
   const connect = useCallback(() => {
     try {
       // Connect to your Go WebSocket server
-      const socket = new WebSocket("ws://localhost:8080/subscribe");
+      const socket = new WebSocket("ws://localhost:8888/subscribe");
 
       socket.onopen = () => {
         console.log("WebSocket connected");
@@ -38,19 +43,15 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       };
 
       socket.onmessage = (event) => {
-        console.log("Message received:", event.data);
-        onMessageReceived(event.data);
+        try {
+          const data = JSON.parse(event.data) as ChatMessage;
 
-        try {   
-          
-          const data = JSON.parse(event.data);
-          // Assuming your Go server sends: {"message": "text"}
-          setMessages((prev) => [...prev, data.message || event.data]);
-        } catch (e) {
-          // If not JSON, just use raw data
-          setMessages((prev) => [...prev, event.data]);
+          setMessages((prev) => [...prev, data]);
+        } catch (err) {
+          console.error("Invalid WebSocket message:", event.data);
         }
       };
+
 
       socket.onerror = (error) => {
         console.error("WebSocket error:", error);
@@ -59,7 +60,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       socket.onclose = () => {
         console.log("WebSocket disconnected");
         setIsConnected(false);
-        
+
         // Auto-reconnect after 3 seconds
         reconnectTimeout.current = setTimeout(() => {
           console.log("Attempting to reconnect...");
@@ -71,24 +72,27 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     } catch (error) {
       console.error("Failed to connect:", error);
     }
-  }, [onMessageReceived]);
+  }, []);
 
   const sendMessage = useCallback((msg: string) => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      // For the Go server's publish endpoint, use HTTP POST
-      fetch("http://localhost:8080/publish", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message: msg }),
-      }).catch((error) => {
-        console.error("Failed to send message:", error);
-      });
-    } else {
-      console.warn("WebSocket is not connected");
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.warn("No token found");
+      return;
     }
+
+    fetch("http://localhost:8888/publish", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`, 
+      },
+      body: JSON.stringify({ text: msg }),
+    }).catch((error) => {
+      console.error("Failed to send message:", error);
+    });
   }, []);
+
 
   useEffect(() => {
     connect();

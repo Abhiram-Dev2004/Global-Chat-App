@@ -14,6 +14,8 @@ const (
 	Label = "message"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldUsername holds the string denoting the username field in the database.
+	FieldUsername = "username"
 	// FieldText holds the string denoting the text field in the database.
 	FieldText = "text"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -25,6 +27,7 @@ const (
 // Columns holds all SQL columns for message fields.
 var Columns = []string{
 	FieldID,
+	FieldUsername,
 	FieldText,
 	FieldCreatedAt,
 }
@@ -40,6 +43,10 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// UsernameValidator is a validator for the "username" field. It is called by the builders before save.
+	UsernameValidator func(string) error
+	// TextValidator is a validator for the "text" field. It is called by the builders before save.
+	TextValidator func(string) error
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
@@ -52,6 +59,11 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByUsername orders the results by the username field.
+func ByUsername(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUsername, opts...).ToFunc()
 }
 
 // ByText orders the results by the text field.

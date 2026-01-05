@@ -21,6 +21,12 @@ type MessageCreate struct {
 	hooks    []Hook
 }
 
+// SetUsername sets the "username" field.
+func (_c *MessageCreate) SetUsername(v string) *MessageCreate {
+	_c.mutation.SetUsername(v)
+	return _c
+}
+
 // SetText sets the "text" field.
 func (_c *MessageCreate) SetText(v string) *MessageCreate {
 	_c.mutation.SetText(v)
@@ -102,8 +108,21 @@ func (_c *MessageCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *MessageCreate) check() error {
+	if _, ok := _c.mutation.Username(); !ok {
+		return &ValidationError{Name: "username", err: errors.New(`ent: missing required field "Message.username"`)}
+	}
+	if v, ok := _c.mutation.Username(); ok {
+		if err := message.UsernameValidator(v); err != nil {
+			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "Message.username": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Text(); !ok {
 		return &ValidationError{Name: "text", err: errors.New(`ent: missing required field "Message.text"`)}
+	}
+	if v, ok := _c.mutation.Text(); ok {
+		if err := message.TextValidator(v); err != nil {
+			return &ValidationError{Name: "text", err: fmt.Errorf(`ent: validator failed for field "Message.text": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Message.created_at"`)}
@@ -142,6 +161,10 @@ func (_c *MessageCreate) createSpec() (*Message, *sqlgraph.CreateSpec) {
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = &id
+	}
+	if value, ok := _c.mutation.Username(); ok {
+		_spec.SetField(message.FieldUsername, field.TypeString, value)
+		_node.Username = value
 	}
 	if value, ok := _c.mutation.Text(); ok {
 		_spec.SetField(message.FieldText, field.TypeString, value)

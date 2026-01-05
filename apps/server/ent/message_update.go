@@ -28,6 +28,20 @@ func (_u *MessageUpdate) Where(ps ...predicate.Message) *MessageUpdate {
 	return _u
 }
 
+// SetUsername sets the "username" field.
+func (_u *MessageUpdate) SetUsername(v string) *MessageUpdate {
+	_u.mutation.SetUsername(v)
+	return _u
+}
+
+// SetNillableUsername sets the "username" field if the given value is not nil.
+func (_u *MessageUpdate) SetNillableUsername(v *string) *MessageUpdate {
+	if v != nil {
+		_u.SetUsername(*v)
+	}
+	return _u
+}
+
 // SetText sets the "text" field.
 func (_u *MessageUpdate) SetText(v string) *MessageUpdate {
 	_u.mutation.SetText(v)
@@ -88,7 +102,25 @@ func (_u *MessageUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *MessageUpdate) check() error {
+	if v, ok := _u.mutation.Username(); ok {
+		if err := message.UsernameValidator(v); err != nil {
+			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "Message.username": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Text(); ok {
+		if err := message.TextValidator(v); err != nil {
+			return &ValidationError{Name: "text", err: fmt.Errorf(`ent: validator failed for field "Message.text": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *MessageUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(message.Table, message.Columns, sqlgraph.NewFieldSpec(message.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -96,6 +128,9 @@ func (_u *MessageUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.Username(); ok {
+		_spec.SetField(message.FieldUsername, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Text(); ok {
 		_spec.SetField(message.FieldText, field.TypeString, value)
@@ -121,6 +156,20 @@ type MessageUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *MessageMutation
+}
+
+// SetUsername sets the "username" field.
+func (_u *MessageUpdateOne) SetUsername(v string) *MessageUpdateOne {
+	_u.mutation.SetUsername(v)
+	return _u
+}
+
+// SetNillableUsername sets the "username" field if the given value is not nil.
+func (_u *MessageUpdateOne) SetNillableUsername(v *string) *MessageUpdateOne {
+	if v != nil {
+		_u.SetUsername(*v)
+	}
+	return _u
 }
 
 // SetText sets the "text" field.
@@ -196,7 +245,25 @@ func (_u *MessageUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *MessageUpdateOne) check() error {
+	if v, ok := _u.mutation.Username(); ok {
+		if err := message.UsernameValidator(v); err != nil {
+			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "Message.username": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Text(); ok {
+		if err := message.TextValidator(v); err != nil {
+			return &ValidationError{Name: "text", err: fmt.Errorf(`ent: validator failed for field "Message.text": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(message.Table, message.Columns, sqlgraph.NewFieldSpec(message.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -221,6 +288,9 @@ func (_u *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err er
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.Username(); ok {
+		_spec.SetField(message.FieldUsername, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Text(); ok {
 		_spec.SetField(message.FieldText, field.TypeString, value)

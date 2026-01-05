@@ -17,8 +17,16 @@ import (
 func init() {
 	messageFields := schema.Message{}.Fields()
 	_ = messageFields
+	// messageDescUsername is the schema descriptor for username field.
+	messageDescUsername := messageFields[1].Descriptor()
+	// message.UsernameValidator is a validator for the "username" field. It is called by the builders before save.
+	message.UsernameValidator = messageDescUsername.Validators[0].(func(string) error)
+	// messageDescText is the schema descriptor for text field.
+	messageDescText := messageFields[2].Descriptor()
+	// message.TextValidator is a validator for the "text" field. It is called by the builders before save.
+	message.TextValidator = messageDescText.Validators[0].(func(string) error)
 	// messageDescCreatedAt is the schema descriptor for created_at field.
-	messageDescCreatedAt := messageFields[2].Descriptor()
+	messageDescCreatedAt := messageFields[3].Descriptor()
 	// message.DefaultCreatedAt holds the default value on creation for the created_at field.
 	message.DefaultCreatedAt = messageDescCreatedAt.Default.(func() time.Time)
 	// messageDescID is the schema descriptor for id field.

@@ -36,6 +36,7 @@ type MessageMutation struct {
 	op            Op
 	typ           string
 	id            *uuid.UUID
+	username      *string
 	text          *string
 	created_at    *time.Time
 	clearedFields map[string]struct{}
@@ -148,6 +149,42 @@ func (m *MessageMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	}
 }
 
+// SetUsername sets the "username" field.
+func (m *MessageMutation) SetUsername(s string) {
+	m.username = &s
+}
+
+// Username returns the value of the "username" field in the mutation.
+func (m *MessageMutation) Username() (r string, exists bool) {
+	v := m.username
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsername returns the old "username" field's value of the Message entity.
+// If the Message object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageMutation) OldUsername(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsername is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsername requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsername: %w", err)
+	}
+	return oldValue.Username, nil
+}
+
+// ResetUsername resets all changes to the "username" field.
+func (m *MessageMutation) ResetUsername() {
+	m.username = nil
+}
+
 // SetText sets the "text" field.
 func (m *MessageMutation) SetText(s string) {
 	m.text = &s
@@ -254,7 +291,10 @@ func (m *MessageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MessageMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 3)
+	if m.username != nil {
+		fields = append(fields, message.FieldUsername)
+	}
 	if m.text != nil {
 		fields = append(fields, message.FieldText)
 	}
@@ -269,6 +309,8 @@ func (m *MessageMutation) Fields() []string {
 // schema.
 func (m *MessageMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case message.FieldUsername:
+		return m.Username()
 	case message.FieldText:
 		return m.Text()
 	case message.FieldCreatedAt:
@@ -282,6 +324,8 @@ func (m *MessageMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *MessageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case message.FieldUsername:
+		return m.OldUsername(ctx)
 	case message.FieldText:
 		return m.OldText(ctx)
 	case message.FieldCreatedAt:
@@ -295,6 +339,13 @@ func (m *MessageMutation) OldField(ctx context.Context, name string) (ent.Value,
 // type.
 func (m *MessageMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case message.FieldUsername:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsername(v)
+		return nil
 	case message.FieldText:
 		v, ok := value.(string)
 		if !ok {
@@ -358,6 +409,9 @@ func (m *MessageMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *MessageMutation) ResetField(name string) error {
 	switch name {
+	case message.FieldUsername:
+		m.ResetUsername()
+		return nil
 	case message.FieldText:
 		m.ResetText()
 		return nil
