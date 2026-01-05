@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import styles from "../auth.module.css";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -29,70 +30,39 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      background: "#0f172a",
-      color: "#fff"
-    }}>
-      <div style={{
-        padding: "2rem",
-        background: "#1e293b",
-        borderRadius: "1rem",
-        width: "350px",
-        boxShadow: "0 0 15px rgba(0,0,0,0.2)"
-      }}>
-        <h2 style={{ textAlign: "center" }}>Login</h2>
-        <form onSubmit={handleSubmit} style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "1rem",
-          marginTop: "1rem"
-        }}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            style={{ padding: "0.5rem", borderRadius: "8px", border: "none" }}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            style={{ padding: "0.5rem", borderRadius: "8px", border: "none" }}
-            required
-          />
-          <button
-            type="submit"
-            style={{
-              padding: "0.7rem",
-              background: "#3b82f6",
-              border: "none",
-              borderRadius: "8px",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: "bold"
-            }}
-          >
+    <div className={styles.container}>
+      <div className={styles.card}>
+        <h2 className={styles.title}>Welcome Back</h2>
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.inputGroup}>
+            <input
+              type="email"
+              placeholder="Email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className={styles.input}
+              required
+            />
+          </div>
+          <div className={styles.inputGroup}>
+            <input
+              type="password"
+              placeholder="Password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              className={styles.input}
+              required
+            />
+          </div>
+          <button type="submit" className={styles.button}>
             Login
           </button>
         </form>
-        <p
-          style={{
-            marginTop: "1rem",
-            textAlign: "center",
-            cursor: "pointer",
-            color: "#93c5fd"
-          }}
-          onClick={() => router.push("/signup")}
-        >
-          New user? Sign up
-        </p>
+        <div className={styles.footer}>
+          <span onClick={() => router.push("/signup")} className={styles.link}>
+            New user? Sign up
+          </span>
+        </div>
       </div>
     </div>
   );
