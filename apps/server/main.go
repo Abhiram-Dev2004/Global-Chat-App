@@ -103,7 +103,7 @@ func (h *Hub) Join(roomName string, c *websocket.Conn) *Client {
 			hub:       h,
 		}
 		h.rooms[roomName] = room
-		go room.run() // ⭐ start room worker
+		go room.run() //  start room worker
 	}
 	h.mu.Unlock()
 
@@ -289,7 +289,7 @@ func (cs *chatServer) extractUsernameFromJWT(r *http.Request) (string, error) {
 }
 
 func (cs *chatServer) publishHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("🟡 /publish HIT")
+	log.Println("!!! /publish HIT")
 	log.Println("HEADERS RECEIVED:", r.Header)
 	if r.Method != "POST" {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -317,7 +317,7 @@ func (cs *chatServer) publishHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	log.Println("🟢 JWT OK, username =", username)
+	log.Println("!!! JWT OK, username =", username)
 
 	msgID := uuid.New()
 	now := time.Now()
@@ -337,7 +337,7 @@ func (cs *chatServer) publishHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to produce to kafka", http.StatusInternalServerError)
 		return
 	}
-	log.Println("✅ PRODUCED TO KAFKA")
+	log.Println("!!! PRODUCED TO KAFKA")
 
 	w.WriteHeader(http.StatusAccepted)
 

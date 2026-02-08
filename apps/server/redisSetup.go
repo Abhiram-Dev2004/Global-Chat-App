@@ -4,17 +4,19 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"os"
 
 	"github.com/redis/go-redis/v9"
 )
 
 func SetupRedisClient() (*redis.Client, *redis.PubSub) {
 	ctx := context.Background()
-
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPass := os.Getenv("REDIS_PASS")
 	opt := &redis.Options{
-		Addr:      "valkey-2881b9f0-dak222004-e707.e.aivencloud.com:12722",
+		Addr:      redisHost,
 		Username:  "default",
-		Password:  "AVNS_eNbJkdshaz_YZXELTYi",
+		Password:  redisPass,
 		DB:        0,
 		TLSConfig: &tls.Config{}, // Required for `rediss://`
 	}
@@ -26,7 +28,7 @@ func SetupRedisClient() (*redis.Client, *redis.PubSub) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("✅ Connected to Redis:", pong)
+	fmt.Println("!!!!Connected to Redis:", pong)
 
 	// Pub/Sub setup
 

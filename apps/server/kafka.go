@@ -13,7 +13,7 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-/* ---------------- PRODUCER ---------------- */
+//---------------- PRODUCER ---------------- 
 
 // KafkaProducer wraps a kafka.Writer instance
 type KafkaProducer struct {
@@ -31,7 +31,6 @@ func loadTLSConfig() (*tls.Config, error) {
 	if !certPool.AppendCertsFromPEM([]byte(caCert)) {
 		return nil, fmt.Errorf("failed to append CA cert")
 	}
-
 	// Client cert + key
 	certPEM := os.Getenv("KAFKA_CLIENT_CERT")
 	keyPEM := os.Getenv("KAFKA_CLIENT_KEY")
@@ -69,9 +68,9 @@ func NewKafkaProducer() (*KafkaProducer, error) {
 		DualStack: true,
 		TLS:       tlsConfig,
 	}
-
+	kafkaServiceURI := os.Getenv("KAFKA_SERVICE_URI")
 	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers:  []string{"kafka-1ef455df-hayagriva899-adf2.g.aivencloud.com:25695"},
+		Brokers:  []string{kafkaServiceURI},
 		Topic:    "MESSAGES",
 		Balancer: &kafka.LeastBytes{},
 		Dialer:   dialer,
@@ -91,18 +90,16 @@ func (kp *KafkaProducer) ProduceMessage(roomID string, message []byte) error {
 	})
 }
 
-// Close closes the Kafka producer
+
 func (kp *KafkaProducer) Close() error {
 	return kp.writer.Close()
 }
 
-/* ---------------- CONSUMER ---------------- */
+//---------------- CONSUMER ---------------- 
 
 type KafkaConsumer struct {
 	reader *kafka.Reader
 }
-
-// NewKafkaConsumer creates a Kafka consumer
 func NewKafkaConsumer(groupID string) (*KafkaConsumer, error) {
 	tlsConfig, err := loadTLSConfig()
 	if err != nil {
@@ -114,9 +111,9 @@ func NewKafkaConsumer(groupID string) (*KafkaConsumer, error) {
 		DualStack: true,
 		TLS:       tlsConfig,
 	}
-
+	kafkaServiceURI := os.Getenv("KAFKA_SERVICE_URI")
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     []string{"kafka-1ef455df-hayagriva899-adf2.g.aivencloud.com:25695"},
+		Brokers:     []string{kafkaServiceURI},
 		Topic:       "MESSAGES",
 		GroupID:     groupID,           // without groupid, it caused redundant message accumulation in the db each time the server restarts
 		StartOffset: kafka.FirstOffset, //  THIS IS THE FIX
@@ -125,8 +122,6 @@ func NewKafkaConsumer(groupID string) (*KafkaConsumer, error) {
 
 	return &KafkaConsumer{reader: reader}, nil
 }
-
-// Consume reads messages from Kafka
 func (kc *KafkaConsumer) Consume(ctx context.Context, handle func(msg string) error) error {
 	for {
 		m, err := kc.reader.ReadMessage(ctx)
