@@ -60,7 +60,7 @@ The system follows an event-driven, distributed architecture.
 
 ## Security
 
-- TLS-encrypted connections for Kafka and PostgreSQL (Aiven-managed).
+- TLS-encrypted connections for Kafka and PostgreSQL.
 - Secure credential management using environment variables.
 - JWT-based authentication for users.
 - WebSocket connections authenticated during handshake.
@@ -79,14 +79,6 @@ HTTP publish
 → Redis (room-based Pub/Sub)
 → WebSocket connections (one per client)
  
-## Deployment Notes
-
-# Kafka, Redis, and PostgreSQL are managed using Aiven
-# Services are accessed securely over TLS
-# Project is a monorepo managed with Yarn workspaces
-# Environment Configuration
-# All sensitive credentials and TLS materials are now stored entirely in environment variables.
-# No certificate or key files (.pem, .cert, .key) are committed or required locally.
 
 ## Running the monorepo
 1) go to apps/server
@@ -95,3 +87,19 @@ HTTP publish
 4) go to root dir and run npm install
 5) run "yarn run dev"  in the root dir to start the monorepo
 
+# Design Notes
+
+## Per-Room Partitioning
+Messages are keyed by `room_id` in Kafka, ensuring ordered delivery within each room while maintaining horizontal scalability.
+
+## Replay on Reconnect
+Kafka + PostgreSQL provide durability. If a client disconnects, missed messages are fetched from PostgreSQL on reconnect.
+
+## Ordering Guarantee
+Ordering is per room, not global. Global ordering is unnecessary — users only require correct sequence within a conversation.
+
+## Redis Failure Scenario
+Redis Pub/Sub is only for real-time fan-out. If a WebSocket server or client is down during publish, messages remain safe in Kafka/PostgreSQL and are recovered on reconnect.
+
+## Room Membership Tracking
+Message delivery does not require a centralized membership registry because Redis Pub/Sub handles fan-out to active subscribers. Presence (e.g., online users) can be optionally implemented using lightweight Redis sets with TTL/heartbeats.
